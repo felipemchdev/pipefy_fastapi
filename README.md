@@ -1,8 +1,8 @@
 # Client Management & Pipefy Integration
 
-Backend corporativo desenvolvido com FastAPI para gerenciamento de clientes, processamento de webhooks e integração simulada com Pipefy via GraphQL.
+Backend desenvolvido com FastAPI para gerenciamento de clientes, processamento de webhooks e integração simulada com Pipefy via GraphQL.
 
-O projeto foi estruturado utilizando arquitetura em camadas, separação clara de responsabilidades, idempotência para eventos distribuídos e testes automatizados, simulando um cenário próximo de uma aplicação backend real utilizada em ambientes corporativos.
+O projeto foi construído com foco em arquitetura backend desacoplada, separação de responsabilidades, idempotência e organização próxima de aplicações corporativas reais.
 
 ---
 
@@ -12,69 +12,71 @@ A aplicação possui dois fluxos principais:
 
 ## 1. Criação de Clientes
 
-Responsável por:
-- validar dados de entrada
+Fluxo responsável por:
+
+- validar os dados recebidos
 - persistir clientes no banco
 - definir status inicial
-- estruturar mutation GraphQL de criação de card no Pipefy
+- gerar payload GraphQL para criação de card no Pipefy
 
 ## 2. Processamento de Webhooks
 
-Responsável por:
+Fluxo responsável por:
+
 - receber eventos simulados do Pipefy
 - garantir idempotência
-- aplicar regra de priorização
-- atualizar status do cliente
-- estruturar mutations GraphQL de atualização de campos
+- calcular prioridade do cliente
+- atualizar status
+- gerar mutations GraphQL de atualização
 
 ---
 
-# Objetivos Técnicos
+# Objetivos do Projeto
 
-O projeto foi desenvolvido com foco em:
+O projeto foi desenvolvido para praticar e demonstrar:
 
-- arquitetura backend desacoplada
-- separação entre HTTP, regras de negócio e persistência
-- integração externa simulada
+- arquitetura backend em camadas
+- separação entre HTTP, negócio e persistência
+- integração externa desacoplada
+- idempotência em eventos distribuídos
 - organização enterprise-ready
-- facilidade de manutenção
 - testabilidade
-- escalabilidade futura
+- preparação para escalabilidade futura
 
 ---
 
 # Stack Utilizada
 
-| Tecnologia     | Objetivo                       |
-| -------------- | ------------------------------ |
-| Python 3.12+   | Linguagem principal            |
-| FastAPI        | Framework HTTP                 |
-| SQLAlchemy 2.0 | ORM                            |
-| SQLite         | Banco local                    |
-| Alembic        | Controle de migrations         |
-| Pydantic v2    | Validação de dados             |
-| Pytest         | Testes automatizados           |
-| Docker         | Containerização                |
-| Uvicorn        | ASGI Server                    |
-| GraphQL        | Simulação da integração Pipefy |
+| Tecnologia     | Objetivo             |
+| -------------- | -------------------- |
+| Python 3.12+   | Linguagem principal  |
+| FastAPI        | API HTTP             |
+| SQLAlchemy 2.0 | ORM                  |
+| SQLite         | Banco local          |
+| Alembic        | Migrations           |
+| Pydantic v2    | Validação            |
+| Pytest         | Testes automatizados |
+| Docker         | Containerização      |
+| Uvicorn        | ASGI Server          |
+| GraphQL        | Integração Pipefy    |
 
 ---
 
 # Arquitetura da Aplicação
 
-O projeto segue arquitetura em camadas para reduzir acoplamento e melhorar organização do domínio.
+A aplicação segue arquitetura em camadas para reduzir acoplamento e melhorar manutenção.
 
 ```text
 HTTP Layer (Routes)
         ↓
-Service Layer (Business Rules)
+Service Layer
         ↓
-Repository Layer (Database Access)
+Repository Layer
         ↓
 Database
 ````
 
-## Separação de responsabilidades
+## Separação de Responsabilidades
 
 ### Routes
 
@@ -85,7 +87,7 @@ Responsáveis apenas por:
 * chamar services
 * retornar responses HTTP
 
-Nenhuma regra de negócio fica nos endpoints.
+As rotas não possuem regras de negócio.
 
 ---
 
@@ -94,23 +96,23 @@ Nenhuma regra de negócio fica nos endpoints.
 Responsáveis por:
 
 * regras de negócio
-* fluxo transacional
+* orquestração dos fluxos
 * priorização
 * idempotência
 * integração com Pipefy
-* orquestração da aplicação
 
 ---
 
 ### Repositories
 
-Responsáveis exclusivamente por:
+Responsáveis exclusivamente pelo acesso ao banco.
 
-* persistência
+Centralizam:
+
 * queries
-* isolamento do ORM
-
-Isso evita espalhar acesso ao banco pela aplicação.
+* inserts
+* updates
+* persistência
 
 ---
 
@@ -118,17 +120,13 @@ Isso evita espalhar acesso ao banco pela aplicação.
 
 Camada isolada para integrações externas.
 
-Atualmente:
+Atualmente contém:
 
-* Pipefy GraphQL mutations
-* simulação de requests externos
+* mutations GraphQL
+* cliente Pipefy
+* simulação de requests
 
-Essa separação facilita:
-
-* mocking
-* testes
-* manutenção
-* troca futura de providers
+Essa separação facilita manutenção e testes.
 
 ---
 
@@ -148,6 +146,11 @@ app/
 │   ├── logging.py
 │   └── exceptions.py
 │
+├── integrations/
+│   └── pipefy/
+│       ├── graphql_client.py
+│       └── mutations.py
+│
 ├── models/
 │   ├── client.py
 │   └── webhook_event.py
@@ -156,19 +159,13 @@ app/
 │   ├── client_repository.py
 │   └── webhook_repository.py
 │
-├── services/
-│   ├── client_service.py
-│   ├── webhook_service.py
-│   └── pipefy_service.py
-│
 ├── schemas/
 │   ├── client.py
 │   └── webhook.py
 │
-├── integrations/
-│   └── pipefy/
-│       ├── graphql_client.py
-│       └── mutations.py
+├── services/
+│   ├── client_service.py
+│   └── webhook_service.py
 │
 ├── tests/
 │   ├── conftest.py
@@ -181,31 +178,22 @@ app/
 
 ---
 
-# Fluxo Completo da Aplicação
+# Fluxos da Aplicação
 
-## Fluxo 1 - POST /clientes
+# POST /clientes
 
-### Entrada
+Endpoint responsável pela criação de clientes.
 
-Recebe:
+## Fluxo
 
-* nome
-* email
-* tipo de solicitação
-* valor do patrimônio
-
-### Processamento
-
-O sistema:
-
-1. valida os dados com Pydantic
-2. persiste o cliente no banco
+1. valida payload com Pydantic
+2. cria cliente no banco
 3. define status inicial
-4. monta mutation GraphQL createCard
+4. monta mutation GraphQL
 5. simula envio ao Pipefy
-6. retorna payload estruturado
+6. retorna resposta estruturada
 
-### Status inicial
+## Status Inicial
 
 ```text
 Aguardando Analise
@@ -213,20 +201,11 @@ Aguardando Analise
 
 ---
 
-## Fluxo 2 - POST /webhooks/pipefy/card-updated
+# POST /webhooks/pipefy/card-updated
 
-### Entrada
+Endpoint responsável pelo processamento de webhooks.
 
-Recebe:
-
-* event_id
-* card_id
-* cliente_email
-* timestamp
-
-### Processamento
-
-O sistema:
+## Fluxo
 
 1. verifica idempotência
 2. valida duplicidade do evento
@@ -234,9 +213,9 @@ O sistema:
 4. calcula prioridade
 5. atualiza status
 6. registra evento processado
-7. monta mutations GraphQL de update
+7. gera mutations GraphQL de update
 
-### Status final
+## Status Final
 
 ```text
 Processado
@@ -246,22 +225,20 @@ Processado
 
 # Regra de Priorização
 
-| Patrimonio | Prioridade        |
-| ---------- | ----------------- |
-| >= 200.000 | prioridade_alta   |
-| < 200.000  | prioridade_normal |
+| Patrimônio | Prioridade |
+| ---------- | ---------- |
+| >= 200000  | alta       |
+| < 200000   | normal     |
 
 ---
 
 # Estratégia de Idempotência
 
-Webhooks podem ser reenviados múltiplas vezes em arquiteturas distribuídas.
+Como webhooks podem ser reenviados múltiplas vezes, o sistema implementa controle de idempotência utilizando:
 
-Para evitar processamento duplicado:
-
-* cada evento possui `event_id`
-* o banco mantém controle dos eventos já processados
-* `event_id` possui restrição UNIQUE
+* `event_id`
+* tabela de eventos processados
+* constraint UNIQUE
 
 Caso um evento duplicado seja recebido:
 
@@ -270,15 +247,11 @@ Caso um evento duplicado seja recebido:
 
 ---
 
-# GraphQL - Integração Pipefy
+# Integração GraphQL
 
-O projeto utiliza estrutura realista baseada na documentação oficial do Pipefy GraphQL API.
+O projeto utiliza estrutura baseada na API GraphQL do Pipefy.
 
-A integração foi mantida desacoplada da aplicação principal para facilitar evolução futura.
-
----
-
-# Mutation - Create Card
+## Mutation - Create Card
 
 ```graphql
 mutation CreateCard($input: CreateCardInput!) {
@@ -294,7 +267,7 @@ mutation CreateCard($input: CreateCardInput!) {
 
 ---
 
-# Mutation - Update Card Field
+## Mutation - Update Card Field
 
 ```graphql
 mutation UpdateCardField($input: UpdateCardFieldInput!) {
@@ -309,32 +282,6 @@ mutation UpdateCardField($input: UpdateCardFieldInput!) {
 
 ---
 
-# Exemplo de Payload GraphQL
-
-```json
-{
-  "query": "mutation CreateCard($input: CreateCardInput!) { createCard(input: $input) { card { id title created_at } } }",
-  "variables": {
-    "input": {
-      "pipe_id": "304497",
-      "title": "Joao Silva - Atualizacao cadastral",
-      "fields_attributes": [
-        {
-          "field_id": "cliente_email",
-          "field_value": "joao@example.com"
-        },
-        {
-          "field_id": "valor_patrimonio",
-          "field_value": "250000"
-        }
-      ]
-    }
-  }
-}
-```
-
----
-
 # Banco de Dados
 
 ## Tabela: clients
@@ -342,7 +289,7 @@ mutation UpdateCardField($input: UpdateCardFieldInput!) {
 Armazena:
 
 * dados do cliente
-* patrimonio
+* patrimônio
 * status
 * prioridade
 
@@ -350,10 +297,7 @@ Armazena:
 
 ## Tabela: processed_webhook_events
 
-Responsável por:
-
-* controle de idempotência
-* rastreamento de eventos processados
+Responsável pelo controle de idempotência.
 
 Possui:
 
@@ -362,23 +306,21 @@ Possui:
 
 ---
 
-# Como Executar o Projeto
+# Executando o Projeto
 
-## Execução Local
-
-### Instalar dependências
+## Instalar dependências
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Executar migrations
+## Executar migrations
 
 ```bash
 alembic upgrade head
 ```
 
-### Iniciar aplicação
+## Subir aplicação
 
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -386,9 +328,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
-# Execução via Docker
-
-## Build e start
+# Executando com Docker
 
 ```bash
 docker-compose up --build
@@ -404,22 +344,6 @@ pytest app/tests/ -v
 
 ---
 
-# Cobertura de Testes
-
-Os testes automatizados cobrem:
-
-* criação de cliente
-* persistência no banco
-* validação de email
-* patrimônio inválido
-* regra de prioridade
-* prioridade no threshold exato
-* idempotência
-* cliente inexistente
-* duplicidade de eventos
-
----
-
 # Swagger
 
 Disponível em:
@@ -432,12 +356,14 @@ http://localhost:8000/docs
 
 # Exemplos de Requisição
 
-## Criar Cliente
+## Criar Cliente (PowerShell)
 
-```bash
-curl -X POST http://localhost:8000/clientes \
-  -H "Content-Type: application/json" \
-  -d '{
+```powershell
+Invoke-RestMethod `
+  -Method POST `
+  -Uri "http://localhost:8000/clientes" `
+  -ContentType "application/json" `
+  -Body '{
     "cliente_nome":"Joao Silva",
     "cliente_email":"joao@example.com",
     "tipo_solicitacao":"Atualizacao cadastral",
@@ -447,12 +373,14 @@ curl -X POST http://localhost:8000/clientes \
 
 ---
 
-## Processar Webhook
+## Processar Webhook (PowerShell)
 
-```bash
-curl -X POST http://localhost:8000/webhooks/pipefy/card-updated \
-  -H "Content-Type: application/json" \
-  -d '{
+```powershell
+Invoke-RestMethod `
+  -Method POST `
+  -Uri "http://localhost:8000/webhooks/pipefy/card-updated" `
+  -ContentType "application/json" `
+  -Body '{
     "event_id":"evt_123",
     "card_id":"card_456",
     "cliente_email":"joao@example.com",
@@ -462,49 +390,60 @@ curl -X POST http://localhost:8000/webhooks/pipefy/card-updated \
 
 ---
 
-# Logging Estruturado
+# Logging
 
 A aplicação possui logging estruturado para:
 
 * criação de clientes
-* processamento de webhook
-* detecção de duplicidade
-* simulação de integração Pipefy
+* processamento de webhooks
+* eventos duplicados
+* integração Pipefy
 * tratamento de erros
 
 ---
 
 # Tratamento de Erros
 
-Exceções customizadas:
+Exceções customizadas utilizadas:
 
-* ClientNotFoundException
-* DuplicateWebhookEventException
-* ValidationException
+* `ClientNotFoundException`
+* `DuplicateWebhookEventException`
 
-Handlers globais garantem responses padronizadas.
+Handlers globais padronizam as respostas HTTP.
+
+---
+
+# Testes Automatizados
+
+Os testes cobrem:
+
+* criação de cliente
+* validação de email
+* patrimônio inválido
+* regra de prioridade
+* idempotência
+* cliente inexistente
+* duplicidade de eventos
 
 ---
 
 # Possíveis Evoluções
 
-* PostgreSQL em produção
-* integração real com Pipefy
+* PostgreSQL
 * autenticação JWT
+* integração real com Pipefy
 * filas assíncronas
 * retry policy
 * observabilidade distribuída
-* tracing
+* CI/CD
 * rate limiting
-* CI/CD pipeline
+* tracing
 
 ---
 
 # Escalabilidade AWS
 
-A arquitetura foi desenhada para permitir evolução para ambientes cloud distribuídos.
-
-## Arquitetura sugerida
+Arquitetura futura planejada:
 
 ```text
 API Gateway
@@ -515,51 +454,36 @@ RDS PostgreSQL
     ↓
 SQS
     ↓
-Workers Assincronos
+Workers Assíncronos
 ```
 
----
-
-## Componentes AWS
+## Serviços AWS
 
 | Serviço         | Responsabilidade         |
 | --------------- | ------------------------ |
 | API Gateway     | Entrada HTTP             |
-| ECS Fargate     | Containers da aplicação  |
+| ECS Fargate     | Containers               |
 | Lambda          | Processamento assíncrono |
-| RDS PostgreSQL  | Persistência relacional  |
+| RDS PostgreSQL  | Persistência             |
 | DynamoDB        | Idempotência distribuída |
 | SQS             | Fila de eventos          |
-| EventBridge     | Orquestração de eventos  |
-| CloudWatch      | Logs e monitoramento     |
+| CloudWatch      | Logs                     |
 | Secrets Manager | Gestão de segredos       |
-
----
-
-## Idempotência Distribuída
-
-Em ambiente distribuído, o controle de idempotência pode ser realizado via DynamoDB utilizando:
-
-```python
-attribute_not_exists(event_id)
-```
-
-Isso garante processamento único mesmo com múltiplas réplicas da aplicação.
 
 ---
 
 # Considerações Finais
 
-O objetivo deste projeto foi simular uma aplicação backend corporativa moderna, aplicando:
+O objetivo do projeto foi simular uma aplicação backend moderna aplicando:
 
 * arquitetura desacoplada
 * separação de responsabilidades
-* integração externa simulada
+* integração externa
 * regras de negócio isoladas
 * testes automatizados
 * idempotência
 * observabilidade
 * preparação para cloud
 
-A proposta foi construir algo além de um CRUD simples, aproximando a solução de um cenário real de engenharia backend.
+A proposta foi construir algo além de um CRUD simples, aproximando o projeto de um cenário real de engenharia backend.
 
